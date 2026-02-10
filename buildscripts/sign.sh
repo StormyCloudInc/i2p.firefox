@@ -15,6 +15,9 @@ if [ -f "$SCRIPT_DIR/config_override.sh" ]; then
   . "$SCRIPT_DIR/config_override.sh"
 fi
 
+# Timestamp server for code signing longevity
+TIMESTAMP_SERVER="${TIMESTAMP_SERVER:-http://timestamp.digicert.com}"
+
 linuxsign() {
     ## LINUX SIGNING IS EXPERIMENTAL AND SHOULD NOT BE USED IN DEFAULT STATE.
     if [ ! -f jsign-4.1.jar ]; then
@@ -29,19 +32,80 @@ linuxsign() {
         --keystore "$HOME/signingkeys/signing-key.jks" \
         --storepass changeit \
         --keypass changeit \
-        --tsaurl "http://timestamp.sectigo.com" \
-        --name "I2P-Browser-Installer" \
+        --tsaurl "$TIMESTAMP_SERVER" \
+        --name "I2P-Easy-Install-Bundle" \
         --alg "SHA-512" \
         "$1"
 }
 
+windowssign() {
+    # Sign a Windows executable with an EV code signing certificate.
+    # EV certificates are typically on hardware tokens (SafeNet/YubiKey)
+    # and are auto-detected by signtool via the /a flag.
+    #
+    # If you need to specify a particular certificate, set the
+    # SIGNING_CERT_THUMBPRINT environment variable to the SHA1 thumbprint
+    # of your certificate.
+    #
+    # Usage: windowssign <file_to_sign>
+    local FILE_TO_SIGN="$1"
+
+    if [ -z "$FILE_TO_SIGN" ]; then
+        echo "ERROR: No file specified for signing."
+        return 1
+    fi
+
+    if ! command -v signtool.exe &> /dev/null; then
+        echo "ERROR: signtool.exe not found in PATH."
+        echo "Install the Windows SDK or add it to your PATH."
+        return 1
+    fi
+
+    if [ -n "$SIGNING_CERT_THUMBPRINT" ]; then
+        # Sign with a specific certificate identified by thumbprint
+        signtool.exe sign \
+            /fd sha256 \
+            /tr "$TIMESTAMP_SERVER" \
+            /td sha256 \
+            /sha1 "$SIGNING_CERT_THUMBPRINT" \
+            "$FILE_TO_SIGN"
+    else
+        # Auto-detect the best signing certificate (/a flag)
+        signtool.exe sign \
+            /fd sha256 \
+            /tr "$TIMESTAMP_SERVER" \
+            /td sha256 \
+            /a \
+            "$FILE_TO_SIGN"
+    fi
+
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Signing failed for $FILE_TO_SIGN"
+        return 1
+    fi
+
+    # Verify the signature
+    signtool.exe verify /pa "$FILE_TO_SIGN"
+    if [ $? -ne 0 ]; then
+        echo "WARNING: Signature verification failed for $FILE_TO_SIGN"
+        return 1
+    fi
+
+    echo "Successfully signed: $FILE_TO_SIGN"
+}
+
+INSTALLER="I2P-Easy-Install-Bundle-$I2P_VERSION.exe"
+
 if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     JAVA_HOME=`type -p java|xargs readlink -f|xargs dirname|xargs dirname`
-    linuxsign I2P-Easy-Install-Bundle-$I2P_VERSION.exe
-    cp "I2P-Easy-Install-Bundle-$I2P_VERSION.exe" "I2P-Easy-Install-Bundle-$I2P_VERSION-signed.exe"
+    linuxsign "$INSTALLER"
+    cp "$INSTALLER" "I2P-Easy-Install-Bundle-$I2P_VERSION-signed.exe"
 else
-    #signtool.exe sign -a "I2P-Easy-Install-Bundle-$I2P_VERSION.exe"
-    echo "WARNING: Signing is temporarily disabled for the installer."
-    sleep 5s
-    cp "I2P-Easy-Install-Bundle-$I2P_VERSION.exe" "I2P-Easy-Install-Bundle-$I2P_VERSION-signed.exe"
+    windowssign "$INSTALLER"
+    if [ $? -eq 0 ]; then
+        cp "$INSTALLER" "I2P-Easy-Install-Bundle-$I2P_VERSION-signed.exe"
+    else
+        echo "WARNING: Signing failed. Copying unsigned installer."
+        cp "$INSTALLER" "I2P-Easy-Install-Bundle-$I2P_VERSION-signed.exe"
+    fi
 fi

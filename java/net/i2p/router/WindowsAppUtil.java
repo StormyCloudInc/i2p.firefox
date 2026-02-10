@@ -125,6 +125,7 @@ public class WindowsAppUtil extends WindowsServiceUtil {
             return winConfigDir;
           }
         }
+        break;
       case "mac":
       case "linux":
         File linConfigDir = new File(aih, "lib/config");
@@ -145,7 +146,35 @@ public class WindowsAppUtil extends WindowsServiceUtil {
     return null;
   }
 
+  /**
+   * Get the user-writable config directory in LOCALAPPDATA.
+   * This is where router.config, i2ptunnel.config, and other
+   * writable configuration data is stored.
+   *
+   * @return the user config directory
+   */
+  protected File userConfigDir() {
+    String localAppData = System.getenv("LOCALAPPDATA");
+    if (localAppData != null) {
+      File configDir = new File(localAppData, "I2P");
+      if (configDir.exists()) {
+        return configDir;
+      }
+    }
+    // Fall back to app image config if LOCALAPPDATA is not available
+    return appImageConfig();
+  }
+
   protected String routerConfig() {
+    // Check user config dir first (writable, in LOCALAPPDATA)
+    File userDir = userConfigDir();
+    if (userDir != null) {
+      File routerConf = new File(userDir, "router.config");
+      if (routerConf.exists()) {
+        return routerConf.getAbsolutePath();
+      }
+    }
+    // Fall back to app image config (read-only, in Program Files)
     File appImageHomeDir = selectHome();
     File routerConf = new File(appImageHomeDir, "router.config");
     if (routerConf != null) {

@@ -110,45 +110,42 @@ public class WindowsServiceUtil {
   }
 
   public boolean promptServiceStartIfAvailable(String serviceName) {
-    if (osName() != "windows") {
+    if (!"windows".equals(osName())) {
       return true;
     }
     if (isInstalled(serviceName)) {
-      if (!isStart(serviceName)) {
-        int a;
-        String message = "It appears you have an existing I2P service installed.\n";
-        message += "However, it is not running yet. Please start it through `services.msc`.\n";
-        message += "If you click \"No\", the jpackage router will be launched instead.\n";
-        a = JOptionPane.showConfirmDialog(null, message,
-            "I2P Service detected not running",
-            JOptionPane.YES_NO_OPTION);
-        if (a == JOptionPane.NO_OPTION) {
-          // Do nothing here, this will continue on to launch a jpackaged router
-          return true;
-        } else {
-          // We can't just call `net start` or `sc start` directly, that throws
-          // a permission error. We can start services.msc though, where the
-          // user can start the service themselves. OR maybe we ask for
-          // elevation here? May need to refactor Elevator and Shell32X to
-          // achieve it though
-          ProcessBuilder pb = new ProcessBuilder("C:\\Windows\\System32\\services.msc");
-          try {
-            Process p = pb.start();
-            int exitCode = p.waitFor();
-            if (exitCode != 0) {
-              return false;
-            }
-          } catch (IOException e) {
-            return false;
-          } catch (InterruptedException e) {
-            return false;
-          }
-        }
-        return isStart(serviceName);
+      if (isStart(serviceName)) {
+        // Service is already running, don't launch bundled router
+        return false;
       }
+      // Service installed but not running - ask user what to do
+      String message = "It appears you have an existing I2P service installed.\n";
+      message += "However, it is not running yet. Please start it through `services.msc`.\n";
+      message += "If you click \"No\", the Easy-Install router will be launched instead.\n";
+      int a = JOptionPane.showConfirmDialog(null, message,
+          "I2P Service detected not running",
+          JOptionPane.YES_NO_OPTION);
+      if (a == JOptionPane.NO_OPTION) {
+        // User chose to use bundled router instead
+        return true;
+      }
+      // User chose to start the service via services.msc
+      ProcessBuilder pb = new ProcessBuilder("C:\\Windows\\System32\\services.msc");
+      try {
+        Process p = pb.start();
+        p.waitFor();
+      } catch (IOException | InterruptedException e) {
+        // If services.msc fails, fall back to bundled router
+        return true;
+      }
+      // Check if user managed to start the service
+      if (isStart(serviceName)) {
+        return false; // Service is now running, don't launch bundled
+      }
+      // Service still not running after services.msc closed, fall back to bundled
       return true;
     }
-    return true;
+    return true; // Service not installed, proceed with bundled router
   }
 
   public String getServiceState(String serviceName) {

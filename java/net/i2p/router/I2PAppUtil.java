@@ -20,14 +20,19 @@ public class I2PAppUtil extends WindowsAppUtil {
   public String getProgramFilesInstall() {
     String programFiles = System.getenv("PROGRAMFILES");
     if (programFiles != null) {
-      File programFilesI2P = new File(programFiles, "i2p/i2p.exe");
-      if (programFilesI2P.exists())
+      File i2pDir = new File(programFiles, "i2p");
+      File programFilesI2P = new File(i2pDir, "i2p.exe");
+      // Only match IzPack installs (have lib/ directory), not our bundled install (has app/ directory)
+      File libDir = new File(i2pDir, "lib");
+      if (programFilesI2P.exists() && libDir.exists())
         return programFilesI2P.getAbsolutePath();
     }
-    String programFiles86 = System.getenv("PROGRAMFILES86");
+    String programFiles86 = System.getenv("ProgramFiles(x86)");
     if (programFiles86 != null) {
-      File programFiles86I2P = new File(programFiles86, "i2p/i2p.exe");
-      if (programFiles86I2P.exists())
+      File i2pDir = new File(programFiles86, "i2p");
+      File programFiles86I2P = new File(i2pDir, "i2p.exe");
+      File libDir = new File(i2pDir, "lib");
+      if (programFiles86I2P.exists() && libDir.exists())
         return programFiles86I2P.getAbsolutePath();
     }
     return null;
@@ -36,48 +41,51 @@ public class I2PAppUtil extends WindowsAppUtil {
   public boolean checkProgramFilesInstall() {
     String programFiles = System.getenv("PROGRAMFILES");
     if (programFiles != null) {
-      File programFilesI2P = new File(programFiles, "i2p/i2p.exe");
-      if (programFilesI2P.exists())
+      File i2pDir = new File(programFiles, "i2p");
+      File programFilesI2P = new File(i2pDir, "i2p.exe");
+      // Only match IzPack installs (have lib/ directory), not our bundled install (has app/ directory)
+      File libDir = new File(i2pDir, "lib");
+      if (programFilesI2P.exists() && libDir.exists())
         return true;
     }
-    String programFiles86 = System.getenv("PROGRAMFILES86");
+    String programFiles86 = System.getenv("ProgramFiles(x86)");
     if (programFiles86 != null) {
-      File programFiles86I2P = new File(programFiles86, "i2p/i2p.exe");
-      if (programFiles86I2P.exists())
+      File i2pDir = new File(programFiles86, "i2p");
+      File programFiles86I2P = new File(i2pDir, "i2p.exe");
+      File libDir = new File(i2pDir, "lib");
+      if (programFiles86I2P.exists() && libDir.exists())
         return true;
     }
     return false;
   }
 
   public boolean promptUserInstallStartIfAvailable() {
-    if (osName() != "windows") {
+    if (!"windows".equals(osName())) {
       return true;
     }
     if (checkProgramFilesInstall()) {
-      int a;
-      String message =
-          "It appears you have an existing, unbundled I2P rotuer installed.\n";
-      message +=
-          "However, it is not running yet. Please start it using the shortcut on the desktop.\n";
-      message +=
-          "If you click \"No\", the Easy-Install router will be launched instead.\n";
-      a = JOptionPane.showConfirmDialog(null, message,
-                                        "I2P Service detected not running",
+      String message = "It appears you have an existing, unbundled I2P router installed.\n";
+      message += "If you click \"Yes\", it will be launched instead.\n";
+      message += "If you click \"No\", the Easy-Install router will be launched instead.\n";
+      int a = JOptionPane.showConfirmDialog(null, message,
+                                        "Existing I2P installation detected",
                                         JOptionPane.YES_NO_OPTION);
       if (a == JOptionPane.NO_OPTION) {
-        // Do nothing here, this will continue on to launch a jpackaged router
+        // User chose to use bundled router instead
         return true;
-      } else {
-        try {
-          String pfi = getProgramFilesInstall();
-          if (pfi != null)
-            Runtime.getRuntime().exec(new String[] {pfi});
-        } catch (IOException e) {
-          return false;
+      }
+      // User chose to launch the existing install
+      try {
+        String pfi = getProgramFilesInstall();
+        if (pfi != null) {
+          Runtime.getRuntime().exec(new String[] {pfi});
+          return false; // Don't also launch bundled router
         }
+      } catch (IOException e) {
+        // If existing install fails to launch, fall back to bundled router
         return true;
       }
     }
-    return true;
+    return true; // No existing install found, proceed with bundled router
   }
 }

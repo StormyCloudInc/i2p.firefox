@@ -44,13 +44,23 @@ elif [ "$machine" = "unix" ]; then
   export EXTRA="    public final static String EXTRA = \"-$EXTRACODE\";"
 fi
 
-. "$SCRIPT_DI"$SCRIPT_DIR"/buildscripts/launcher.sh"
+. "$SCRIPT_DIR"/buildscripts/launcher.sh
 
 if [ -z $I2P_VERSION ]; then 
     I2P_VERSION=$("$JAVA_HOME"/bin/java -cp $SCRIPT_DIR/build/router.jar net.i2p.router.RouterVersion | sed "s/.*: //" | head -n 1 | sed 's|-|.|g')
 fi
 
 echo "preparing to invoke jpackage for I2P version $I2P_VERSION"
+
+# Clean non-JAR artifacts from build/ to prevent jpackage input contamination
+# (jpackage --input includes everything in the directory; stale I2P/ from prior builds
+# creates nested app images with corrupt classpaths)
+rm -rf "$SCRIPT_DIR"/build/I2P
+rm -rf "$SCRIPT_DIR"/build/net
+rm -rf "$SCRIPT_DIR"/build/plugin
+rm -rf "$SCRIPT_DIR"/build/licenses
+rm -f "$SCRIPT_DIR"/build/*.exe "$SCRIPT_DIR"/build/*.nsi "$SCRIPT_DIR"/build/*.nsh
+rm -f "$SCRIPT_DIR"/build/*.ico "$SCRIPT_DIR"/build/*.txt "$SCRIPT_DIR"/build/*.zip
 
 rm -rf I2P
 
@@ -66,8 +76,7 @@ if [ ! -d "I2P" ]; then
   --java-options "--add-opens java.base/java.lang=ALL-UNNAMED" \
   --java-options "--add-opens java.base/sun.nio.fs=ALL-UNNAMED" \
   --java-options "--add-opens java.base/java.nio=ALL-UNNAMED" \
-  --java-options "--add-opens java.base/java.util.Properties=ALL-UNNAMED" \
-  --java-options "--add-opens java.base/java.util.Properties.defaults=ALL-UNNAMED" \
+  --java-options "--add-opens java.base/java.util=ALL-UNNAMED" \
   $JPACKAGE_OPTS \
   --resource-dir $SCRIPT_DIR/build \
   --app-content "$SCRIPT_DIR"/src/I2P/config \
@@ -85,5 +94,5 @@ cp "$SCRIPT_DIR/../i2p.i2p.jpackage-build/LICENSE.txt" license/I2P.txt
 
 mkdir -p "$SCRIPT_DIR"/build/I2P
 cp -rv "$SCRIPT_DIR"/I2P/* "$SCRIPT_DIR"/build/I2P
-cp -rv src/I2P/config build/I2P/config
+cp -rv src/I2P/config/* build/I2P/config/
 zip -r I2P-Prebuilt.zip build/I2P/

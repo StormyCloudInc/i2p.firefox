@@ -21,12 +21,9 @@ COUNT="Ten Nine Eight Seven Six Five Four Three Two One"
 which java
 export JAVA=$(java --version | tr -d 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n' | cut -d ' ' -f 2 | cut -d '.' -f 1 | tr -d '\n\t\- ')
 
-if [ "$JAVA" -lt "14" ]; then
-  echo "Java 14+ must be used to compile with jpackage, java is $JAVA"
+if [ "$JAVA" -lt "21" ]; then
+  echo "Java 21+ must be used to compile with jpackage, java is $JAVA"
   exit 1
-fi
-if [ "$JAVA" -lt "17" ]; then
-  echo "It is highly recommended that you use Java 17+ to build release packages"
 fi
 
 if [ -z "${JAVA_HOME}" ]; then

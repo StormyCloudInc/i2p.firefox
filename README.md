@@ -1,6 +1,19 @@
 I2P Easy-Install Bundle for Windows, (Formerly)I2P Browsing Profile for Firefox
 ===============================================================================
 
+Current Build Path (jpackage-first)
+-----------------------------------
+
+Use one of the following:
+
+- `./buildscripts/unsigned.sh` (recommended wrapper)
+- `./buildscripts/build.sh` then `./buildscripts/nsis.sh`
+
+The installer is built from a jpackage app-image layout. Building without
+jpackage is not supported.
+
+See also: `docs/JPACKAGE-MIGRATION.md`.
+
 Features:
 ---------
 

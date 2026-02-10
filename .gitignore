@@ -29,3 +29,9 @@ tmp
 /.stfolder/
 /.vscode/
 *github-release-config*.sh*
+/.claude/
+/console_preview.png
+/icon_preview.png
+/nul
+/i2p (1).icns
+/i2p.firefox.base.profile/

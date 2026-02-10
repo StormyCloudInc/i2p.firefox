@@ -36,7 +36,7 @@ public class WinLauncher extends I2PAppUtil {
     System.setProperty(
         "i2p.dir.base",
         appImageConfig().getAbsolutePath());
-    System.setProperty("i2p.dir.config", appImageConfig().getAbsolutePath());
+    System.setProperty("i2p.dir.config", userConfigDir().getAbsolutePath());
     System.setProperty("router.pid",
         String.valueOf(ProcessHandle.current().pid()));
     /**
@@ -64,14 +64,14 @@ public class WinLauncher extends I2PAppUtil {
     launcher.logger.info("\t" + System.getProperty("router.pid"));
     boolean continuerunning = launcher.promptServiceStartIfAvailable("i2p");
     if (!continuerunning) {
-      launcher.logger.error(
-          "Service startup failure, please start I2P service with services.msc");
-      System.exit(2);
+      launcher.logger.info(
+          "Existing I2P service is running, bundled router not needed.");
+      System.exit(0);
     }
     continuerunning = launcher.promptUserInstallStartIfAvailable();
     if (!continuerunning) {
-      launcher.logger.error("User-install startup required.");
-      System.exit(2);
+      launcher.logger.info("Existing I2P installation launched, bundled router not needed.");
+      System.exit(0);
     }
 
     // This actually does most of what we use NSIS for if NSIS hasn't
