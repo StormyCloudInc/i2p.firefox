@@ -28,7 +28,7 @@ if [ -z $machine ]; then
   esac
 fi
 
-ICON="$SCRIPT_DIR/src/icons/ui2pbrowser_icon.ico"
+ICON="$SCRIPT_DIR/src/icons/i2p.ico"
 
 if [ "$machine" = "unix" ]; then
   ICON="$SCRIPT_DIR"/src/icons/windowsUIToopie2.png
@@ -50,9 +50,8 @@ echo "preparing to invoke jpackage for I2P version $I2P_VERSION"
 rm -rf "$SCRIPT_DIR"/build/I2P
 rm -rf "$SCRIPT_DIR"/build/net
 rm -rf "$SCRIPT_DIR"/build/plugin
-rm -rf "$SCRIPT_DIR"/build/licenses
 rm -f "$SCRIPT_DIR"/build/*.exe "$SCRIPT_DIR"/build/*.nsi "$SCRIPT_DIR"/build/*.nsh
-rm -f "$SCRIPT_DIR"/build/*.ico "$SCRIPT_DIR"/build/*.txt "$SCRIPT_DIR"/build/*.zip
+rm -f "$SCRIPT_DIR"/build/*.ico "$SCRIPT_DIR"/build/*.zip
 
 rm -rf I2P
 
@@ -75,7 +74,7 @@ if [ ! -d "I2P" ]; then
   --app-content "$SCRIPT_DIR"/src/unix/torbrowser.sh \
   --app-content "$SCRIPT_DIR"/src/win/torbrowser-windows.sh \
   --app-content "$SCRIPT_DIR"/src/icons/windowsUIToopie2.png \
-  --app-content "$SCRIPT_DIR"/src/icons/ui2pbrowser_icon.ico \
+  --app-content "$SCRIPT_DIR"/src/icons/i2p.ico \
   --icon "${ICON}" \
   --input $SCRIPT_DIR/build --main-jar launcher.jar --main-class net.i2p.router.WinLauncher
 fi

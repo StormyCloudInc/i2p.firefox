@@ -25,7 +25,7 @@ Var DATADIR
 LicenseData "licenses\LICENSE.txt"
 # This will be in the installer/uninstaller's title bar
 Name "${COMPANYNAME} - ${APPNAME}"
-Icon ui2pbrowser_icon.ico
+Icon i2p.ico
 OutFile "I2P-Easy-Install-Bundle-${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}.exe"
 
 RequestExecutionLevel admin
@@ -35,7 +35,7 @@ RequestExecutionLevel admin
 !include FileFunc.nsh
 !include nsDialogs.nsh
 !include WordFunc.nsh
-!define MUI_ICON ui2pbrowser_icon.ico
+!define MUI_ICON i2p.ico
 !define MUI_FINISHPAGE
 !include "MUI2.nsh"
 
@@ -631,7 +631,7 @@ Function installBinaries
     File /a /r "I2P\config\eepsite\"
     SetOutPath $INSTDIR
     File /a /r "I2P\I2P.exe"
-    File ui2pbrowser_icon.ico
+    File i2p.ico
 FunctionEnd
 
 Function installConfig
@@ -787,12 +787,12 @@ Function installerFunction
     # Create Start Menu shortcuts
     SetOutPath "$INSTDIR"
     createDirectory "$SMPROGRAMS\${APPNAME}"
-    CreateShortCut "$SMPROGRAMS\${APPNAME}\I2P.lnk" "$INSTDIR\I2P.exe" "" "$INSTDIR\ui2pbrowser_icon.ico"
+    CreateShortCut "$SMPROGRAMS\${APPNAME}\I2P.lnk" "$INSTDIR\I2P.exe" "" "$INSTDIR\i2p.ico"
     Delete "$SMPROGRAMS\${APPNAME}\Browse I2P.lnk"
     Delete "$SMPROGRAMS\${APPNAME}\Browse I2P - Temporary Identity.lnk"
 
     # Create desktop shortcut
-    CreateShortCut "$DESKTOP\I2P.lnk" "$INSTDIR\I2P.exe" "" "$INSTDIR\ui2pbrowser_icon.ico"
+    CreateShortCut "$DESKTOP\I2P.lnk" "$INSTDIR\I2P.exe" "" "$INSTDIR\i2p.ico"
     Delete "$DESKTOP\Browse I2P.lnk"
     Delete "$DESKTOP\Browse I2P - Temporary Identity.lnk"
     # Clean up shortcuts from standard IzPack I2P installer or router console
@@ -802,13 +802,13 @@ Function installerFunction
 
     # Create the uninstaller
     WriteUninstaller "$INSTDIR\uninstall-i2pbrowser.exe"
-    CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall I2P.lnk" "$INSTDIR\uninstall-i2pbrowser.exe" "" "$INSTDIR\ui2pbrowser_icon.ico"
+    CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall I2P.lnk" "$INSTDIR\uninstall-i2pbrowser.exe" "" "$INSTDIR\i2p.ico"
 
     # Add/Remove Programs registry entries
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayName" "${COMPANYNAME} ${APPNAME}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "UninstallString" '"$INSTDIR\uninstall-i2pbrowser.exe"'
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayIcon" "$INSTDIR\ui2pbrowser_icon.ico"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayIcon" "$INSTDIR\i2p.ico"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "Publisher" "${COMPANYNAME}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayVersion" "${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "NoModify" 1
@@ -842,7 +842,7 @@ Section "uninstall"
     rmDir /r "$INSTDIR\config"
     rmDir /r "$INSTDIR\eepsite"
     rmDir /r "$INSTDIR\licenses"
-    Delete "$INSTDIR\ui2pbrowser_icon.ico"
+    Delete "$INSTDIR\i2p.ico"
     Delete "$INSTDIR\windowsUItoopie2.png"
     Delete "$INSTDIR\I2P.exe"
 

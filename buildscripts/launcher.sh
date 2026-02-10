@@ -102,6 +102,22 @@ echo "compiling custom launcher"
 mkdir -p "$SCRIPT_DIR/build"
 cp "$I2P_JARS"/*.jar "$SCRIPT_DIR/build"
 cp "$I2P_JBIGI_JAR" "$SCRIPT_DIR/build"
+
+# Replace desktopgui system tray icons with our own
+echo "replacing desktopgui icons"
+ICON_SRC="$SCRIPT_DIR/src/icons/desktopgui/itoopie_24.png"
+if [ -f "$ICON_SRC" ] && [ -f "$SCRIPT_DIR/build/desktopgui.jar" ]; then
+  ICON_TMP="$SCRIPT_DIR/build/desktopgui_icons"
+  mkdir -p "$ICON_TMP/desktopgui/resources/images"
+  cp "$ICON_SRC" "$ICON_TMP/desktopgui/resources/images/itoopie_black_24.png"
+  cp "$ICON_SRC" "$ICON_TMP/desktopgui/resources/images/itoopie_white_24.png"
+  cp "$ICON_SRC" "$ICON_TMP/desktopgui/resources/images/logo.png"
+  cd "$ICON_TMP"
+  jar uf "$SCRIPT_DIR/build/desktopgui.jar" desktopgui/resources/images/itoopie_black_24.png desktopgui/resources/images/itoopie_white_24.png desktopgui/resources/images/logo.png
+  cd "$SCRIPT_DIR"
+  rm -rf "$ICON_TMP"
+fi
+
 if [ ! -f "$SCRIPT_DIR/build/jna.jar" ]; then
   echo "downloading jna"
   wget_download "https://repo1.maven.org/maven2/net/java/dev/jna/jna/$JNA_VERSION/jna-$JNA_VERSION.jar" -O "$SCRIPT_DIR/build/jna.jar"
