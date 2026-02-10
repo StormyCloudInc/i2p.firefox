@@ -30,15 +30,7 @@ fi
 
 ICON="$SCRIPT_DIR/src/icons/ui2pbrowser_icon.ico"
 
-if [ "$machine" = "Mac" ]; then
-  rm -rf I2P
-  "$SCRIPT_DIR"/buildscripts/getprebuilt.sh
-  exit 0
-elif [ "$machine" = "Linux" ]; then
-  rm -rf I2P
-  "$SCRIPT_DIR"/buildscripts/getprebuilt.sh
-  exit 0
-elif [ "$machine" = "unix" ]; then
+if [ "$machine" = "unix" ]; then
   ICON="$SCRIPT_DIR"/src/icons/windowsUIToopie2.png
   export EXTRACODE="unix"
   export EXTRA="    public final static String EXTRA = \"-$EXTRACODE\";"

@@ -26,6 +26,17 @@ Or use the wrapper:
 - `build/` is a generated directory.
 - Root-level installer outputs (`I2P-Easy-Install-Bundle-*.exe`) are generated artifacts.
 - `src/nsis/i2pbrowser-jpackage.nsi` is obsolete and should not be generated.
+- Legacy scripts for alternate packaging formats were removed:
+  - `buildscripts/exe.sh`
+  - `buildscripts/msi.sh`
+  - `buildscripts/zip.sh`
+  - `buildscripts/targz.sh`
+  - related helper scripts for those outputs
+- Legacy GitHub daily/edit release helper scripts were removed:
+  - `buildscripts/daily.sh`
+  - `buildscripts/daily-unstable.sh`
+  - `buildscripts/edit-release.sh`
+  - `buildscripts/edit-release-unstable.sh`
 
 ## Documentation Scope
 
