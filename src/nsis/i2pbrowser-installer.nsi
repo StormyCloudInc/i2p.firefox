@@ -629,6 +629,8 @@ Function installBinaries
     # Install eepsite at install root (clients.config resolves "eepsite/jetty.xml" relative to user.dir)
     SetOutPath $INSTDIR\eepsite
     File /a /r "I2P\config\eepsite\"
+    # FastCGI context requires jetty-fcgi jars not included in this bundle.
+    Delete "$INSTDIR\eepsite\contexts\cgi-context.xml"
     SetOutPath $INSTDIR
     File /a /r "I2P\I2P.exe"
     File i2p.ico
@@ -666,6 +668,8 @@ Function installConfig
     SetOutPath "$DATADIR"
     IfFileExists "$DATADIR\eepsite\docroot" +2 0
         File /a /r "I2P\config\eepsite\"
+    # Remove stale optional FastCGI context on upgrades too.
+    Delete "$DATADIR\eepsite\contexts\cgi-context.xml"
 FunctionEnd
 
 Function writeRouterConfig

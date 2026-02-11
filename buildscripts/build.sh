@@ -19,7 +19,7 @@ fi
 "$SCRIPT_DIR"/buildscripts/version.sh
 "$SCRIPT_DIR"/buildscripts/licenses.sh
 
-if [ -z $machine ]; then
+if [ -z "$machine" ]; then
   unameOut="$(uname -s)"
   case "${unameOut}" in
       Linux*)     machine=Linux;;
@@ -30,10 +30,14 @@ fi
 
 ICON="$SCRIPT_DIR/src/icons/i2p.ico"
 
-if [ "$machine" = "unix" ]; then
+if [ "$machine" = "Linux" ]; then
   ICON="$SCRIPT_DIR"/src/icons/windowsUIToopie2.png
   export EXTRACODE="unix"
   export EXTRA="    public final static String EXTRA = \"-$EXTRACODE\";"
+fi
+
+if [ "$machine" = "Mac" ]; then
+  ICON="$SCRIPT_DIR/i2p.icns"
 fi
 
 . "$SCRIPT_DIR"/buildscripts/launcher.sh
@@ -75,6 +79,7 @@ if [ ! -d "I2P" ]; then
   --app-content "$SCRIPT_DIR"/src/win/torbrowser-windows.sh \
   --app-content "$SCRIPT_DIR"/src/icons/windowsUIToopie2.png \
   --app-content "$SCRIPT_DIR"/src/icons/i2p.ico \
+  --app-content "$SCRIPT_DIR"/i2p.icns \
   --icon "${ICON}" \
   --input $SCRIPT_DIR/build --main-jar launcher.jar --main-class net.i2p.router.WinLauncher
 fi

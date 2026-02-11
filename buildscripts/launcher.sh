@@ -105,7 +105,13 @@ cp "$I2P_JBIGI_JAR" "$SCRIPT_DIR/build"
 
 # Replace desktopgui system tray icons with our own
 echo "replacing desktopgui icons"
-ICON_SRC="$SCRIPT_DIR/src/icons/desktopgui/itoopie_24.png"
+ICON_SRC="$SCRIPT_DIR/src/icons/desktopgui/favicon_24.png"
+if [ ! -f "$ICON_SRC" ]; then
+  ICON_SRC="$SCRIPT_DIR/src/icons/windowsUIToopie2.png"
+fi
+if [ ! -f "$ICON_SRC" ]; then
+  ICON_SRC="$SCRIPT_DIR/src/icons/desktopgui/itoopie_24.png"
+fi
 if [ -f "$ICON_SRC" ] && [ -f "$SCRIPT_DIR/build/desktopgui.jar" ]; then
   ICON_TMP="$SCRIPT_DIR/build/desktopgui_icons"
   mkdir -p "$ICON_TMP/desktopgui/resources/images"
@@ -116,6 +122,12 @@ if [ -f "$ICON_SRC" ] && [ -f "$SCRIPT_DIR/build/desktopgui.jar" ]; then
   jar uf "$SCRIPT_DIR/build/desktopgui.jar" desktopgui/resources/images/itoopie_black_24.png desktopgui/resources/images/itoopie_white_24.png desktopgui/resources/images/logo.png
   cd "$SCRIPT_DIR"
   rm -rf "$ICON_TMP"
+fi
+
+# Jetty 12 eepsite template includes optional FastCGI context, but this
+# bundle does not include jetty-fcgi jars. Remove it to avoid START_FAILED.
+if [ -f "$SCRIPT_DIR/src/I2P/config/eepsite/contexts/cgi-context.xml" ]; then
+  rm -f "$SCRIPT_DIR/src/I2P/config/eepsite/contexts/cgi-context.xml"
 fi
 
 if [ ! -f "$SCRIPT_DIR/build/jna.jar" ]; then

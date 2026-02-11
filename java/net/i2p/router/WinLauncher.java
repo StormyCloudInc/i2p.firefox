@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import net.i2p.app.ClientAppManager;
 import net.i2p.crypto.*;
@@ -83,12 +85,10 @@ public class WinLauncher extends I2PAppUtil {
      * }
      */
 
-    if (!launcher.isInstalled("i2p")) {
-      if (launcher.i2pRouter.saveConfig("routerconsole.browser", "NUL")) {
-        launcher.logger.info("updated routerconsole.browser config " +
-            launcher.appImageExe());
-      }
+    if (launcher.i2pRouter.saveConfig("routerconsole.browser", "NUL")) {
+      launcher.logger.info("updated routerconsole.browser config to NUL");
     }
+    launcher.disableI2PFirefoxTrayAutostart();
     launcher.logger.info("Router is configured");
 
     Thread registrationThread = new Thread(launcher.REGISTER_UPP);
@@ -161,6 +161,37 @@ public class WinLauncher extends I2PAppUtil {
     } catch (InterruptedException bad) {
       bad.printStackTrace();
       throw new RuntimeException(bad);
+    }
+  }
+
+  private void disableI2PFirefoxTrayAutostart() {
+    File configRoot = userConfigDir();
+    if (configRoot == null) {
+      return;
+    }
+    File pluginClients = new File(configRoot, "plugins/i2pfirefox/clients.config");
+    if (!pluginClients.exists() || !pluginClients.isFile()) {
+      return;
+    }
+    try {
+      List<String> lines = Files.readAllLines(pluginClients.toPath(), StandardCharsets.UTF_8);
+      boolean changed = false;
+      for (int i = 0; i < lines.size(); i++) {
+        String line = lines.get(i);
+        if (line.startsWith("clientApp.0.startOnLoad=")) {
+          if (!"clientApp.0.startOnLoad=false".equals(line)) {
+            lines.set(i, "clientApp.0.startOnLoad=false");
+            changed = true;
+          }
+          break;
+        }
+      }
+      if (changed) {
+        Files.write(pluginClients.toPath(), lines, StandardCharsets.UTF_8);
+        logger.info("disabled i2pfirefox tray autostart in " + pluginClients.getAbsolutePath());
+      }
+    } catch (IOException ioe) {
+      logger.warn("unable to update i2pfirefox clients.config", ioe);
     }
   }
 }
