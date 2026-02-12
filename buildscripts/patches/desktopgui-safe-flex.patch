@@ -1,0 +1,121 @@
+diff --git a/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java b/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java
+index c0494ab00..fd5721f02 100644
+--- a/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java
++++ b/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java
+@@ -523,6 +523,21 @@ class InternalTrayManager extends TrayManager {
+         File pluginDir = new File(configDir, "plugins/i2pfirefox");
+         File launchLog = new File(configDir, "i2pbrowser-launch.log");
+         String url = _context.portMapper().getConsoleURL();
++        File profileDir = resolveProfileDirectory(pluginDir, flexibleMode);
++        File firefoxExe = findFirefoxExecutable();
++        boolean profileReady = profileDir != null && profileDir.exists() &&
++                               new File(profileDir, "prefs.js").exists();
++        if (profileReady && firefoxExe != null &&
++            launchFirefoxDirect(firefoxExe, profileDir, url, pluginDir, launchLog)) {
++            displayMessage(Log.INFO,
++                           _t("I2P Browser"),
++                           (flexibleMode ? _t("Launching Flexible Mode browser")
++                                         : _t("Launching Safe Mode browser")) +
++                           " " + _t("(first launch may take 30-60 seconds)"),
++                           null);
++            return;
++        }
++
+         File pluginJar = new File(pluginDir, "lib/i2pfirefox-plugin.jar");
+         if (!pluginJar.exists()) {
+             pluginJar = new File(pluginDir, "lib/i2pfirefox.jar");
+@@ -536,6 +551,7 @@ class InternalTrayManager extends TrayManager {
+             command.add(pluginJar.getAbsolutePath());
+             command.add("net.i2p.i2pfirefox.I2PBrowser");
+             command.add(flexibleMode ? "-usability" : "-strict");
++            command.add("-noproxycheck");
+             command.add(url);
+             try {
+                 ProcessBuilder pb = new ProcessBuilder(command);
+@@ -551,6 +567,27 @@ class InternalTrayManager extends TrayManager {
+                                              : _t("Launching Safe Mode browser")) +
+                                " " + _t("(first launch may take 30-60 seconds)"),
+                                null);
++                if (firefoxExe != null) {
++                    final boolean fm = flexibleMode;
++                    final String launchUrl = url;
++                    final File pdir = pluginDir;
++                    final File llog = launchLog;
++                    final File fexe = firefoxExe;
++                    new Thread(new Runnable() {
++                        @Override
++                        public void run() {
++                            try {
++                                Thread.sleep(7000);
++                            } catch (InterruptedException ie) {
++                                return;
++                            }
++                            File prof = resolveProfileDirectory(pdir, fm);
++                            if (prof != null && prof.exists() && new File(prof, "prefs.js").exists()) {
++                                launchFirefoxDirect(fexe, prof, launchUrl, pdir, llog);
++                            }
++                        }
++                    }, "i2pbrowser-direct-launch").start();
++                }
+                 return;
+             } catch (IOException ioe) {
+                 log.log(Log.WARN, "Failed to launch i2pfirefox via bundled java", ioe);
+@@ -568,4 +605,58 @@ class InternalTrayManager extends TrayManager {
+         }
+     }
+ 
++    private boolean launchFirefoxDirect(File firefoxExe, File profileDir, String url, File pluginDir, File launchLog) {
++        List<String> command = new ArrayList<String>();
++        command.add(firefoxExe.getAbsolutePath());
++        command.add("--no-remote");
++        command.add("--new-instance");
++        command.add("--profile");
++        command.add(profileDir.getAbsolutePath());
++        command.add(url);
++        try {
++            ProcessBuilder pb = new ProcessBuilder(command);
++            pb.directory(pluginDir);
++            pb.redirectErrorStream(true);
++            pb.redirectOutput(ProcessBuilder.Redirect.appendTo(launchLog));
++            Process p = pb.start();
++            log.info("Started firefox process pid=" + p.pid() + " command=" + command +
++                     " log=" + launchLog.getAbsolutePath());
++            return true;
++        } catch (IOException ioe) {
++            log.log(Log.WARN, "Failed to launch firefox directly", ioe);
++            return false;
++        }
++    }
++
++    private static File resolveProfileDirectory(File pluginDir, boolean flexibleMode) {
++        File runtimeProfile = new File(pluginDir, flexibleMode ?
++                "i2p.firefox.profile.usability" : "i2p.firefox.profile.base");
++        if (runtimeProfile.exists()) {
++            return runtimeProfile;
++        }
++        File baseProfile = new File(pluginDir, flexibleMode ?
++                "i2p.firefox.usability.profile" : "i2p.firefox.base.profile");
++        if (baseProfile.exists()) {
++            return baseProfile;
++        }
++        return runtimeProfile;
++    }
++
++    private static File findFirefoxExecutable() {
++        String[] baseDirs = {
++                System.getenv("ProgramFiles"),
++                System.getenv("ProgramFiles(x86)")
++        };
++        for (String base : baseDirs) {
++            if (base == null || base.length() <= 0) {
++                continue;
++            }
++            File ff = new File(new File(base, "Mozilla Firefox"), "firefox.exe");
++            if (ff.exists()) {
++                return ff;
++            }
++        }
++        return null;
++    }
++
+ }

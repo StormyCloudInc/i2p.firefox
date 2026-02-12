@@ -75,6 +75,19 @@ git commit -am "i2p-$TAG_VERSION-$VERSIONDATE-$EXTRACODE" || :
 git archive --format=tar.gz --output="$SCRIPT_DIR/../i2p.firefox/i2p.i2p.jpackage-build.tar.gz" "i2p-$TAG_VERSION-$VERSIONDATE-$EXTRACODE"
 git checkout "i2p-$TAG_VERSION-$VERSIONDATE-$EXTRACODE" || :
 
+DESKTOPGUI_PATCH="$SCRIPT_DIR/buildscripts/patches/desktopgui-safe-flex.patch"
+if [ -f "$DESKTOPGUI_PATCH" ]; then
+  if git apply --check "$DESKTOPGUI_PATCH" >/dev/null 2>&1; then
+    echo "applying desktopgui safe/flexible menu patch"
+    git apply "$DESKTOPGUI_PATCH"
+  elif git apply -R --check "$DESKTOPGUI_PATCH" >/dev/null 2>&1; then
+    echo "desktopgui safe/flexible menu patch already applied"
+  else
+    echo "desktopgui safe/flexible menu patch does not match current source"
+    exit 1
+  fi
+fi
+
 for i in $COUNT; do
   echo -n "$i...."; sleep 1s
 done
@@ -150,6 +163,22 @@ if [ ! -d "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox" ]; then
   unzip "$SCRIPT_DIR/build/i2pfirefox.zip" -d "$SCRIPT_DIR/src/I2P/config/plugins/"
   rm -rf "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox"
   mv "$SCRIPT_DIR/src/I2P/config/plugins/plugin" "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox"
+fi
+
+# Ensure plugin startup does not spawn a second tray app.
+if [ -f "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox/clients.config" ]; then
+  sed -i 's|^clientApp\.0\.startOnLoad=.*|clientApp.0.startOnLoad=false|' \
+    "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox/clients.config"
+fi
+
+# Ensure command-line mode args are passed through to i2pfirefox launcher.
+if [ -f "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox/i2pbrowser.cmd" ]; then
+  printf '%s\n' \
+    ':; dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd); java -cp "$dir"/lib/i2pfirefox-plugin.jar net.i2p.i2pfirefox.I2PBrowser "$@"; exit $?' \
+    '@ECHO OFF' \
+    'set SCRIPT_DIR=%~dp0' \
+    'java -cp "%SCRIPT_DIR%lib\i2pfirefox-plugin.jar" net.i2p.i2pfirefox.I2PBrowser %*' \
+    > "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox/i2pbrowser.cmd"
 fi
 
 for dll in "$I2P_JBIGI/"*windows*.dll; do
