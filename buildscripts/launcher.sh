@@ -116,6 +116,14 @@ mkdir -p "$SCRIPT_DIR/build"
 cp "$I2P_JARS"/*.jar "$SCRIPT_DIR/build"
 cp "$I2P_JBIGI_JAR" "$SCRIPT_DIR/build"
 
+if [ -f "$DESKTOPGUI_PATCH" ] && [ -f "$SCRIPT_DIR/build/desktopgui.jar" ]; then
+  if ! "$JAVA_HOME"/bin/javap -classpath "$SCRIPT_DIR/build/desktopgui.jar" -p \
+      net.i2p.desktopgui.InternalTrayManager | grep -q "createLaunchSessionId"; then
+    echo "desktopgui.jar missing patched InternalTrayManager (createLaunchSessionId)"
+    exit 1
+  fi
+fi
+
 # Replace desktopgui system tray icons with our own
 echo "replacing desktopgui icons"
 ICON_SRC="$SCRIPT_DIR/src/icons/desktopgui/favicon_24.png"
@@ -174,10 +182,20 @@ fi
 # Ensure command-line mode args are passed through to i2pfirefox launcher.
 if [ -f "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox/i2pbrowser.cmd" ]; then
   printf '%s\n' \
-    ':; dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd); java -cp "$dir"/lib/i2pfirefox-plugin.jar net.i2p.i2pfirefox.I2PBrowser "$@"; exit $?' \
+    ':; dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd); if [ "${I2P_BROWSER_DEBUG:-0}" = "1" ]; then ts=$(date -u +%Y-%m-%dT%H:%M:%SZ); echo "[$ts][i2pbrowser.cmd.sh] cwd=$PWD dir=$dir args=$*" >> "${LOCALAPPDATA:-$HOME}/I2P/i2pbrowser-cmd.log"; fi; java -cp "$dir"/lib/i2pfirefox-plugin.jar net.i2p.i2pfirefox.I2PBrowser "$@"; rc=$?; if [ "${I2P_BROWSER_DEBUG:-0}" = "1" ]; then ts=$(date -u +%Y-%m-%dT%H:%M:%SZ); echo "[$ts][i2pbrowser.cmd.sh] exit=$rc" >> "${LOCALAPPDATA:-$HOME}/I2P/i2pbrowser-cmd.log"; fi; exit $rc' \
     '@ECHO OFF' \
     'set SCRIPT_DIR=%~dp0' \
+    'set LOG_DIR=%LOCALAPPDATA%\I2P' \
+    'if not exist "%LOG_DIR%" mkdir "%LOG_DIR%" >NUL 2>&1' \
+    'if "%I2P_BROWSER_DEBUG%"=="1" (' \
+    '  echo [%DATE% %TIME%][i2pbrowser.cmd] cwd=%CD% script=%SCRIPT_DIR% args=%* >> "%LOG_DIR%\i2pbrowser-cmd.log"' \
+    ')' \
     'java -cp "%SCRIPT_DIR%lib\i2pfirefox-plugin.jar" net.i2p.i2pfirefox.I2PBrowser %*' \
+    'set EXIT_CODE=%ERRORLEVEL%' \
+    'if "%I2P_BROWSER_DEBUG%"=="1" (' \
+    '  echo [%DATE% %TIME%][i2pbrowser.cmd] exit=%EXIT_CODE% >> "%LOG_DIR%\i2pbrowser-cmd.log"' \
+    ')' \
+    'exit /b %EXIT_CODE%' \
     > "$SCRIPT_DIR/src/I2P/config/plugins/i2pfirefox/i2pbrowser.cmd"
 fi
 

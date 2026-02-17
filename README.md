@@ -1,3 +1,26 @@
+Current Status / Recent Changes (Feb 2026)
+=========================================
+
+This branch includes several installer and launcher improvements:
+
+- Fixed the Windows double-launcher/double-tray behavior by patching internal desktop GUI tray launch handling.
+- Updated I2P app/icon assets so taskbar/console/installer use the new I2P icon set.
+- Added detection of existing I2P installs before uninstall/reinstall flow, to handle fresh-build replacement more safely.
+- Switched install target to Program Files instead of AppData.
+- Added automatic Firefox download support.
+- Added M-Lab speed test integration and automatic bandwidth tuning, including share ratio setup.
+- Added UPNP selection and additional router.config setup defaults during install/config.
+
+Known Regression / Open Issue
+-----------------------------
+
+In attempting to fully eliminate double-launch behavior, Firefox Safe/Flexible launches are currently not fully reliable:
+
+- Safe mode may open regular Firefox behavior unexpectedly.
+- Flexible mode may appear to load Safe-mode-style profile/plugin behavior.
+- Tabs can fail to load reliably (intermittent white/frozen tab state).
+
+Current debugging points to launch-path contention/race behavior around Firefox invocation and profile handoff. This remains an active fix area.
 I2P Easy-Install Bundle for Windows
 ===================================
 
@@ -44,4 +67,5 @@ Release
 
 - Build unsigned installer: `./buildscripts/unsigned.sh`
 - Build + sign installer: `./buildscripts/release.sh`
+
 

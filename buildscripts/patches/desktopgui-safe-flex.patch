@@ -1,70 +1,348 @@
 diff --git a/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java b/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java
-index c0494ab00..fd5721f02 100644
+index 6e3100ead..fc345ab95 100644
 --- a/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java
 +++ b/apps/desktopgui/src/net/i2p/desktopgui/InternalTrayManager.java
-@@ -523,6 +523,21 @@ class InternalTrayManager extends TrayManager {
-         File pluginDir = new File(configDir, "plugins/i2pfirefox");
-         File launchLog = new File(configDir, "i2pbrowser-launch.log");
+@@ -7,7 +7,15 @@ import java.awt.MenuItem;
+ import java.awt.PopupMenu;
+ import java.awt.event.ActionEvent;
+ import java.awt.event.ActionListener;
++import java.io.BufferedWriter;
++import java.io.File;
++import java.io.FileWriter;
+ import java.io.IOException;
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.List;
++import java.util.Locale;
+ import javax.swing.JMenu;
+ import javax.swing.JMenuItem;
+ import javax.swing.JPopupMenu;
+@@ -31,14 +39,18 @@ class InternalTrayManager extends TrayManager {
+     private final RouterContext _context;
+     private final Log log;
+     private final Main _main;
+-    private MenuItem _statusItem, _browserItem, _configItem, _restartItem, _stopItem,
++    private MenuItem _statusItem, _browserSafeItem, _browserFlexItem, _configItem, _restartItem, _stopItem,
+                      _restartHardItem, _stopHardItem, _cancelItem;
+-    private JMenuItem _jstatusItem, _jbrowserItem, _jconfigItem, _jrestartItem, _jstopItem,
++    private JMenuItem _jstatusItem, _jbrowserSafeItem, _jbrowserFlexItem, _jconfigItem, _jrestartItem, _jstopItem,
+                       _jrestartHardItem, _jstopHardItem, _jcancelItem;
+ 
+     private static final boolean CONSOLE_ENABLED = Desktop.isDesktopSupported() &&
+                                                    Desktop.getDesktop().isSupported(Action.BROWSE);
+     private static final String CONSOLE_BUNDLE_NAME = "net.i2p.router.web.messages";
++    private static final boolean BROWSER_DEBUG =
++            "1".equals(System.getenv("I2P_BROWSER_DEBUG")) ||
++            "true".equalsIgnoreCase(System.getenv("I2P_BROWSER_DEBUG")) ||
++            Boolean.getBoolean("i2p.browser.debug");
+ 
+     public InternalTrayManager(RouterContext ctx, Main main, boolean useSwing) {
+         super(ctx, useSwing);
+@@ -60,10 +72,11 @@ class InternalTrayManager extends TrayManager {
+         
+         final MenuItem statusItem = new MenuItem("");
+ 
+-        final MenuItem browserLauncher;
++        final MenuItem browserLauncherSafe;
++        final MenuItem browserLauncherFlexible;
+         if (CONSOLE_ENABLED) {
+-            browserLauncher = new MenuItem(_t("Launch I2P Browser"));
+-            browserLauncher.addActionListener(new ActionListener() {
++            browserLauncherSafe = new MenuItem(_t("Launch I2P Browser (Safe Mode)"));
++            browserLauncherSafe.addActionListener(new ActionListener() {
+                 @Override
+                 public void actionPerformed(ActionEvent arg0) {
+                     new SwingWorker<Object, Object>() {
+@@ -74,13 +87,31 @@ class InternalTrayManager extends TrayManager {
+                         
+                         @Override
+                         protected void done() {
+-                            launchBrowser();
++                            launchI2PBrowser(false);
++                        }
++                    }.execute();
++                }
++            });
++            browserLauncherFlexible = new MenuItem(_t("Launch I2P Browser (Flexible Mode)"));
++            browserLauncherFlexible.addActionListener(new ActionListener() {
++                @Override
++                public void actionPerformed(ActionEvent arg0) {
++                    new SwingWorker<Object, Object>() {
++                        @Override
++                        protected Object doInBackground() throws Exception {
++                            return null;
++                        }
++
++                        @Override
++                        protected void done() {
++                            launchI2PBrowser(true);
+                         }
+                     }.execute();
+                 }
+             });
+         } else {
+-            browserLauncher = null;
++            browserLauncherSafe = null;
++            browserLauncherFlexible = null;
+         }
+ 
+         PopupMenu desktopguiConfigurationLauncher = new PopupMenu(_t("Configure I2P System Tray"));
+@@ -182,7 +213,8 @@ class InternalTrayManager extends TrayManager {
+         popup.add(statusItem);
+         popup.addSeparator();
+         if (CONSOLE_ENABLED) {
+-            popup.add(browserLauncher);
++            popup.add(browserLauncherSafe);
++            popup.add(browserLauncherFlexible);
+             popup.addSeparator();
+         }
+         initializeNotificationItems();
+@@ -200,7 +232,8 @@ class InternalTrayManager extends TrayManager {
+         popup.add(cancelItem);
+         
+         _statusItem = statusItem;
+-        _browserItem = browserLauncher;
++        _browserSafeItem = browserLauncherSafe;
++        _browserFlexItem = browserLauncherFlexible;
+         _configItem = desktopguiConfigurationLauncher;
+         _restartItem = restartItem;
+         _stopItem = stopItem;
+@@ -216,10 +249,11 @@ class InternalTrayManager extends TrayManager {
+         
+         final JMenuItem statusItem = new JMenuItem("");
+ 
+-        final JMenuItem browserLauncher;
++        final JMenuItem browserLauncherSafe;
++        final JMenuItem browserLauncherFlexible;
+         if (CONSOLE_ENABLED) {
+-            browserLauncher = new JMenuItem(_t("Launch I2P Browser"));
+-            browserLauncher.addActionListener(new ActionListener() {
++            browserLauncherSafe = new JMenuItem(_t("Launch I2P Browser (Safe Mode)"));
++            browserLauncherSafe.addActionListener(new ActionListener() {
+                 @Override
+                 public void actionPerformed(ActionEvent arg0) {
+                     new SwingWorker<Object, Object>() {
+@@ -230,13 +264,31 @@ class InternalTrayManager extends TrayManager {
+                         
+                         @Override
+                         protected void done() {
+-                            launchBrowser();
++                            launchI2PBrowser(false);
++                        }
++                    }.execute();
++                }
++            });
++            browserLauncherFlexible = new JMenuItem(_t("Launch I2P Browser (Flexible Mode)"));
++            browserLauncherFlexible.addActionListener(new ActionListener() {
++                @Override
++                public void actionPerformed(ActionEvent arg0) {
++                    new SwingWorker<Object, Object>() {
++                        @Override
++                        protected Object doInBackground() throws Exception {
++                            return null;
++                        }
++
++                        @Override
++                        protected void done() {
++                            launchI2PBrowser(true);
+                         }
+                     }.execute();
+                 }
+             });
+         } else {
+-            browserLauncher = null;
++            browserLauncherSafe = null;
++            browserLauncherFlexible = null;
+         }
+ 
+         JMenu desktopguiConfigurationLauncher = new JMenu(_t("Configure I2P System Tray"));
+@@ -338,7 +390,8 @@ class InternalTrayManager extends TrayManager {
+         popup.add(statusItem);
+         popup.addSeparator();
+         if (CONSOLE_ENABLED) {
+-            popup.add(browserLauncher);
++            popup.add(browserLauncherSafe);
++            popup.add(browserLauncherFlexible);
+             popup.addSeparator();
+         }
+         initializeJNotificationItems();
+@@ -356,7 +409,8 @@ class InternalTrayManager extends TrayManager {
+         popup.add(cancelItem);
+         
+         _jstatusItem = statusItem;
+-        _jbrowserItem = browserLauncher;
++        _jbrowserSafeItem = browserLauncherSafe;
++        _jbrowserFlexItem = browserLauncherFlexible;
+         _jconfigItem = desktopguiConfigurationLauncher;
+         _jrestartItem = restartItem;
+         _jstopItem = stopItem;
+@@ -395,8 +449,10 @@ class InternalTrayManager extends TrayManager {
+             if (!status.equals(oldStatus))
+                 item.setLabel(status);
+         }
+-        if (_browserItem != null)
+-            _browserItem.setEnabled(!imminent);
++        if (_browserSafeItem != null)
++            _browserSafeItem.setEnabled(!imminent);
++        if (_browserFlexItem != null)
++            _browserFlexItem.setEnabled(!imminent);
+         if (_configItem != null)
+             _configItem.setEnabled(!imminent);
+         if (_restartItem != null)
+@@ -416,8 +472,10 @@ class InternalTrayManager extends TrayManager {
+ 
+         if (_jstatusItem != null)
+             _jstatusItem.setText(status);
+-        if (_jbrowserItem != null)
+-            _jbrowserItem.setVisible(!imminent);
++        if (_jbrowserSafeItem != null)
++            _jbrowserSafeItem.setVisible(!imminent);
++        if (_jbrowserFlexItem != null)
++            _jbrowserFlexItem.setVisible(!imminent);
+         if (_jconfigItem != null)
+             _jconfigItem.setVisible(!imminent);
+         if (_jrestartItem != null)
+@@ -469,14 +527,353 @@ class InternalTrayManager extends TrayManager {
+      *
+      * @since 0.9.26
+      */
+-    private void launchBrowser() {
+-        // null args ok
+-        UrlLauncher launcher = new UrlLauncher(_context, null, null);
++    private void launchI2PBrowser(boolean flexibleMode) {
++        File configDir = _context.getConfigDir();
++        File pluginDir = new File(configDir, "plugins/i2pfirefox");
++        File launchLog = new File(configDir, "i2pbrowser-launch.log");
          String url = _context.portMapper().getConsoleURL();
++        String session = createLaunchSessionId(flexibleMode);
++        String modeName = flexibleMode ? "flexible" : "safe";
++        appendLaunchDebug(launchLog, session, "launch-request mode=" + modeName +
++                " configDir=" + configDir.getAbsolutePath() +
++                " pluginDir=" + pluginDir.getAbsolutePath() +
++                " url=" + url +
++                " debug=" + BROWSER_DEBUG);
 +        File profileDir = resolveProfileDirectory(pluginDir, flexibleMode);
 +        File firefoxExe = findFirefoxExecutable();
 +        boolean profileReady = profileDir != null && profileDir.exists() &&
 +                               new File(profileDir, "prefs.js").exists();
++        appendLaunchDebug(launchLog, session, "profile-state mode=" + modeName +
++                " profileDir=" + (profileDir != null ? profileDir.getAbsolutePath() : "<null>") +
++                " profileReady=" + profileReady +
++                " firefoxExe=" + (firefoxExe != null ? firefoxExe.getAbsolutePath() : "<null>"));
++        snapshotFirefoxProcesses(launchLog, session, "pre-launch");
 +        if (profileReady && firefoxExe != null &&
-+            launchFirefoxDirect(firefoxExe, profileDir, url, pluginDir, launchLog)) {
++            launchFirefoxDirect(firefoxExe, profileDir, url, pluginDir, launchLog, session, "direct-preferred")) {
 +            displayMessage(Log.INFO,
 +                           _t("I2P Browser"),
 +                           (flexibleMode ? _t("Launching Flexible Mode browser")
 +                                         : _t("Launching Safe Mode browser")) +
 +                           " " + _t("(first launch may take 30-60 seconds)"),
 +                           null);
++            scheduleSnapshot(launchLog, session, "post-direct-3s", 3000);
++            scheduleSnapshot(launchLog, session, "post-direct-8s", 8000);
 +            return;
 +        }
 +
-         File pluginJar = new File(pluginDir, "lib/i2pfirefox-plugin.jar");
-         if (!pluginJar.exists()) {
-             pluginJar = new File(pluginDir, "lib/i2pfirefox.jar");
-@@ -536,6 +551,7 @@ class InternalTrayManager extends TrayManager {
-             command.add(pluginJar.getAbsolutePath());
-             command.add("net.i2p.i2pfirefox.I2PBrowser");
-             command.add(flexibleMode ? "-usability" : "-strict");
++        File pluginJar = new File(pluginDir, "lib/i2pfirefox-plugin.jar");
++        if (!pluginJar.exists()) {
++            pluginJar = new File(pluginDir, "lib/i2pfirefox.jar");
++        }
++        appendLaunchDebug(launchLog, session, "plugin-jar selected=" + pluginJar.getAbsolutePath() +
++                " exists=" + pluginJar.exists());
++        File javaExe = new File(new File(System.getProperty("java.home"), "bin"), "java.exe");
++        String javaCmd = javaExe.exists() ? javaExe.getAbsolutePath() : "java";
++        if (pluginJar.exists()) {
++            List<String> command = new ArrayList<String>();
++            command.add(javaCmd);
++            command.add("-cp");
++            command.add(pluginJar.getAbsolutePath());
++            command.add("net.i2p.i2pfirefox.I2PBrowser");
++            command.add(flexibleMode ? "-usability" : "-strict");
 +            command.add("-noproxycheck");
-             command.add(url);
-             try {
-                 ProcessBuilder pb = new ProcessBuilder(command);
-@@ -551,6 +567,27 @@ class InternalTrayManager extends TrayManager {
-                                              : _t("Launching Safe Mode browser")) +
-                                " " + _t("(first launch may take 30-60 seconds)"),
-                                null);
++            command.add(url);
++            appendLaunchDebug(launchLog, session, "plugin-launch command=" + command);
++            try {
++                ProcessBuilder pb = new ProcessBuilder(command);
++                pb.directory(pluginDir);
++                pb.redirectErrorStream(true);
++                pb.redirectOutput(ProcessBuilder.Redirect.appendTo(launchLog));
++                Process p = pb.start();
++                log.info("Started i2pfirefox process pid=" + p.pid() + " command=" + command +
++                         " log=" + launchLog.getAbsolutePath());
++                appendLaunchDebug(launchLog, session, "plugin-launch started pid=" + p.pid());
++                displayMessage(Log.INFO,
++                               _t("I2P Browser"),
++                               (flexibleMode ? _t("Launching Flexible Mode browser")
++                                             : _t("Launching Safe Mode browser")) +
++                               " " + _t("(first launch may take 30-60 seconds)"),
++                               null);
++                scheduleSnapshot(launchLog, session, "post-plugin-3s", 3000);
++                scheduleSnapshot(launchLog, session, "post-plugin-8s", 8000);
 +                if (firefoxExe != null) {
 +                    final boolean fm = flexibleMode;
 +                    final String launchUrl = url;
 +                    final File pdir = pluginDir;
 +                    final File llog = launchLog;
 +                    final File fexe = firefoxExe;
++                    final String launchSession = session;
 +                    new Thread(new Runnable() {
 +                        @Override
 +                        public void run() {
-+                            try {
-+                                Thread.sleep(7000);
-+                            } catch (InterruptedException ie) {
++                            for (int attempt = 1; attempt <= 30; attempt++) {
++                                try {
++                                    Thread.sleep(3000);
++                                } catch (InterruptedException ie) {
++                                    appendLaunchDebug(llog, launchSession, "delayed-direct interrupted");
++                                    return;
++                                }
++                                File prof = resolveProfileDirectory(pdir, fm);
++                                boolean ready = prof != null && prof.exists() && new File(prof, "prefs.js").exists();
++                                appendLaunchDebug(llog, launchSession,
++                                        "delayed-direct attempt=" + attempt +
++                                        " profile=" + (prof != null ? prof.getAbsolutePath() : "<null>") +
++                                        " ready=" + ready);
++                                if (!ready) {
++                                    continue;
++                                }
++                                terminateConflictingProfileLaunches(prof, llog, launchSession);
++                                appendLaunchDebug(llog, launchSession,
++                                        "delayed-direct profile ready, attempting direct launch profile=" +
++                                        prof.getAbsolutePath());
++                                launchFirefoxDirect(fexe, prof, launchUrl, pdir, llog, launchSession, "delayed");
++                                snapshotFirefoxProcesses(llog, launchSession, "post-delayed-direct");
 +                                return;
 +                            }
-+                            File prof = resolveProfileDirectory(pdir, fm);
-+                            if (prof != null && prof.exists() && new File(prof, "prefs.js").exists()) {
-+                                launchFirefoxDirect(fexe, prof, launchUrl, pdir, llog);
-+                            }
++                            appendLaunchDebug(llog, launchSession, "delayed-direct gave up after retries");
 +                        }
 +                    }, "i2pbrowser-direct-launch").start();
 +                }
-                 return;
-             } catch (IOException ioe) {
-                 log.log(Log.WARN, "Failed to launch i2pfirefox via bundled java", ioe);
-@@ -568,4 +605,58 @@ class InternalTrayManager extends TrayManager {
-         }
-     }
- 
-+    private boolean launchFirefoxDirect(File firefoxExe, File profileDir, String url, File pluginDir, File launchLog) {
++                return;
++            } catch (IOException ioe) {
++                log.log(Log.WARN, "Failed to launch i2pfirefox via bundled java", ioe);
++                appendLaunchDebug(launchLog, session, "plugin-launch failed error=" + ioe);
++                displayMessage(Log.WARN, _t("I2P Browser"), _t("Failed to launch I2P Browser"), null);
++            }
++        } else {
++            log.warn("Missing i2pfirefox jar at " + pluginJar.getAbsolutePath());
++            appendLaunchDebug(launchLog, session, "plugin-launch skipped missing jar");
++            displayMessage(Log.WARN, _t("I2P Browser"), _t("Missing i2pfirefox plugin jar"), null);
++        }
++        UrlLauncher launcher = new UrlLauncher(_context, null, null);
+         try {
++            appendLaunchDebug(launchLog, session, "fallback UrlLauncher openUrl");
+             launcher.openUrl(url);
++            scheduleSnapshot(launchLog, session, "post-url-launcher-3s", 3000);
+         } catch (IOException e1) {
+             log.log(Log.WARN, "Failed to open browser!", e1);
+-        }    
++            appendLaunchDebug(launchLog, session, "fallback UrlLauncher failed error=" + e1);
++        }
++    }
++
++    private boolean launchFirefoxDirect(File firefoxExe, File profileDir, String url, File pluginDir,
++                                        File launchLog, String session, String stage) {
++        cleanupFirefoxSessionArtifacts(profileDir, launchLog, session, stage);
 +        List<String> command = new ArrayList<String>();
 +        command.add(firefoxExe.getAbsolutePath());
 +        command.add("--no-remote");
@@ -72,6 +350,7 @@ index c0494ab00..fd5721f02 100644
 +        command.add("--profile");
 +        command.add(profileDir.getAbsolutePath());
 +        command.add(url);
++        appendLaunchDebug(launchLog, session, "direct-launch stage=" + stage + " command=" + command);
 +        try {
 +            ProcessBuilder pb = new ProcessBuilder(command);
 +            pb.directory(pluginDir);
@@ -80,10 +359,173 @@ index c0494ab00..fd5721f02 100644
 +            Process p = pb.start();
 +            log.info("Started firefox process pid=" + p.pid() + " command=" + command +
 +                     " log=" + launchLog.getAbsolutePath());
++            appendLaunchDebug(launchLog, session, "direct-launch started pid=" + p.pid() + " stage=" + stage);
 +            return true;
 +        } catch (IOException ioe) {
 +            log.log(Log.WARN, "Failed to launch firefox directly", ioe);
++            appendLaunchDebug(launchLog, session, "direct-launch failed stage=" + stage + " error=" + ioe);
 +            return false;
++        }
++    }
++
++    private static void cleanupFirefoxSessionArtifacts(File profileDir, File launchLog, String session, String stage) {
++        if (profileDir == null) {
++            return;
++        }
++        List<File> targets = new ArrayList<File>();
++        targets.add(new File(profileDir, "sessionstore.jsonlz4"));
++        targets.add(new File(profileDir, "sessionCheckpoints.json"));
++        targets.add(new File(profileDir, "recovery.jsonlz4"));
++        targets.add(new File(profileDir, "recovery.baklz4"));
++        targets.add(new File(profileDir, "previous.jsonlz4"));
++        targets.add(new File(profileDir, "upgrade.jsonlz4"));
++        targets.add(new File(profileDir, "sessionstore-backups"));
++
++        for (File target : targets) {
++            if (!target.exists()) {
++                continue;
++            }
++            boolean ok = deleteRecursively(target);
++            appendLaunchDebug(launchLog, session, "cleanup stage=" + stage +
++                    " target=" + target.getAbsolutePath() + " deleted=" + ok);
++        }
+     }
++
++    private static boolean deleteRecursively(File file) {
++        if (file == null || !file.exists()) {
++            return true;
++        }
++        if (file.isDirectory()) {
++            File[] children = file.listFiles();
++            if (children != null) {
++                for (File child : children) {
++                    if (!deleteRecursively(child)) {
++                        return false;
++                    }
++                }
++            }
++        }
++        return file.delete();
++    }
++
++    private static String createLaunchSessionId(boolean flexibleMode) {
++        return (flexibleMode ? "flex" : "safe") + "-" + Long.toString(System.currentTimeMillis(), 36) +
++                "-" + Integer.toString((int) (System.nanoTime() & 0xFFFF), 36);
++    }
++
++    private static synchronized void appendLaunchDebug(File launchLog, String session, String message) {
++        if (launchLog == null || session == null || message == null) {
++            return;
++        }
++        try {
++            File parent = launchLog.getParentFile();
++            if (parent != null && !parent.exists()) {
++                parent.mkdirs();
++            }
++            BufferedWriter w = new BufferedWriter(new FileWriter(launchLog, true));
++            try {
++                String ts = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(new Date());
++                w.write(ts + " [desktopgui-browser][" + session + "] " + message);
++                w.newLine();
++            } finally {
++                w.close();
++            }
++        } catch (IOException ioe) {
++            // keep debug path non-fatal
++        }
++    }
++
++    private static void scheduleSnapshot(final File launchLog, final String session, final String stage, final long delayMs) {
++        if (!BROWSER_DEBUG) {
++            return;
++        }
++        new Thread(new Runnable() {
++            @Override
++            public void run() {
++                try {
++                    Thread.sleep(delayMs);
++                } catch (InterruptedException ie) {
++                    return;
++                }
++                snapshotFirefoxProcesses(launchLog, session, stage);
++            }
++        }, "i2pbrowser-snap-" + stage).start();
++    }
++
++    private static void snapshotFirefoxProcesses(File launchLog, String session, String stage) {
++        if (!BROWSER_DEBUG) {
++            return;
++        }
++        String os = System.getProperty("os.name", "").toLowerCase(Locale.US);
++        if (!os.contains("win")) {
++            appendLaunchDebug(launchLog, session, "snapshot stage=" + stage + " skipped (non-windows)");
++            return;
++        }
++        List<String> cmd = new ArrayList<String>();
++        cmd.add("powershell");
++        cmd.add("-NoProfile");
++        cmd.add("-Command");
++        cmd.add("Get-CimInstance Win32_Process -Filter \"name='firefox.exe' or name='java.exe'\" | " +
++                "Select-Object ProcessId,ParentProcessId,Name,CommandLine | Format-Table -AutoSize");
++        try {
++            ProcessBuilder pb = new ProcessBuilder(cmd);
++            pb.redirectErrorStream(true);
++            Process p = pb.start();
++            java.io.InputStream is = p.getInputStream();
++            byte[] data = is.readAllBytes();
++            p.waitFor();
++            String out = new String(data);
++            appendLaunchDebug(launchLog, session, "snapshot stage=" + stage + " rc=" + p.exitValue());
++            if (out != null && out.length() > 0) {
++                String[] lines = out.split("\\r?\\n");
++                for (String line : lines) {
++                    String t = line.trim();
++                    if (t.length() > 0) {
++                        appendLaunchDebug(launchLog, session, "snapshot " + stage + " :: " + t);
++                    }
++                }
++            }
++        } catch (Exception e) {
++            appendLaunchDebug(launchLog, session, "snapshot stage=" + stage + " failed error=" + e);
++        }
++    }
++
++    private static void terminateConflictingProfileLaunches(File profileDir, File launchLog, String session) {
++        String os = System.getProperty("os.name", "").toLowerCase(Locale.US);
++        if (!os.contains("win") || profileDir == null) {
++            return;
++        }
++        String escaped = profileDir.getAbsolutePath().replace("'", "''");
++        String ps =
++                "$p='" + escaped + "';" +
++                "$procs=Get-CimInstance Win32_Process -Filter \"name='firefox.exe'\" | " +
++                "Where-Object { $_.CommandLine -like \"*--profile*\" -and $_.CommandLine -like \"*$p*\" -and $_.CommandLine -notlike \"*--no-remote*\" };" +
++                "foreach($x in $procs){ try { Stop-Process -Id $x.ProcessId -Force -ErrorAction Stop; " +
++                "Write-Output (\"killed pid=\" + $x.ProcessId + \" cmd=\" + $x.CommandLine) } catch { " +
++                "Write-Output (\"kill-failed pid=\" + $x.ProcessId + \" err=\" + $_.Exception.Message) } }";
++        List<String> cmd = new ArrayList<String>();
++        cmd.add("powershell");
++        cmd.add("-NoProfile");
++        cmd.add("-Command");
++        cmd.add(ps);
++        try {
++            ProcessBuilder pb = new ProcessBuilder(cmd);
++            pb.redirectErrorStream(true);
++            Process p = pb.start();
++            byte[] data = p.getInputStream().readAllBytes();
++            p.waitFor();
++            String out = new String(data);
++            appendLaunchDebug(launchLog, session, "terminate-conflicts rc=" + p.exitValue());
++            if (out != null && out.length() > 0) {
++                for (String line : out.split("\\r?\\n")) {
++                    String t = line.trim();
++                    if (t.length() > 0) {
++                        appendLaunchDebug(launchLog, session, "terminate-conflicts :: " + t);
++                    }
++                }
++            }
++        } catch (Exception e) {
++            appendLaunchDebug(launchLog, session, "terminate-conflicts failed error=" + e);
 +        }
 +    }
 +

@@ -31,6 +31,10 @@ public class WinLauncher extends I2PAppUtil {
   WinUpdatePostProcessor wupp = null;
   private Router i2pRouter;
   private final Log logger;
+  private static final boolean BROWSER_DEBUG =
+      "1".equals(System.getenv("I2P_BROWSER_DEBUG")) ||
+      "true".equalsIgnoreCase(System.getenv("I2P_BROWSER_DEBUG")) ||
+      Boolean.getBoolean("i2p.browser.debug");
 
   public WinLauncher() {
     File programs = programFile();
@@ -64,6 +68,11 @@ public class WinLauncher extends I2PAppUtil {
     launcher.logger.info("\t" + System.getProperty("i2p.dir.base"));
     launcher.logger.info("\t" + System.getProperty("i2p.dir.config"));
     launcher.logger.info("\t" + System.getProperty("router.pid"));
+    if (BROWSER_DEBUG) {
+      launcher.logger.info("[BROWSER_DEBUG] enabled");
+      launcher.logger.info("[BROWSER_DEBUG] java.home=" + System.getProperty("java.home"));
+      launcher.logger.info("[BROWSER_DEBUG] os.name=" + System.getProperty("os.name"));
+    }
     boolean continuerunning = launcher.promptServiceStartIfAvailable("i2p");
     if (!continuerunning) {
       launcher.logger.info(
@@ -85,8 +94,18 @@ public class WinLauncher extends I2PAppUtil {
      * }
      */
 
+    if (BROWSER_DEBUG) {
+      String oldBrowser = launcher.i2pRouter.getConfigSetting("routerconsole.browser");
+      launcher.logger.info("[BROWSER_DEBUG] routerconsole.browser before update=" + oldBrowser);
+    }
     if (launcher.i2pRouter.saveConfig("routerconsole.browser", "NUL")) {
       launcher.logger.info("updated routerconsole.browser config to NUL");
+    } else if (BROWSER_DEBUG) {
+      launcher.logger.warn("[BROWSER_DEBUG] failed to save routerconsole.browser=NUL");
+    }
+    if (BROWSER_DEBUG) {
+      String newBrowser = launcher.i2pRouter.getConfigSetting("routerconsole.browser");
+      launcher.logger.info("[BROWSER_DEBUG] routerconsole.browser after update=" + newBrowser);
     }
     launcher.disableI2PFirefoxTrayAutostart();
     launcher.logger.info("Router is configured");
@@ -167,28 +186,44 @@ public class WinLauncher extends I2PAppUtil {
   private void disableI2PFirefoxTrayAutostart() {
     File configRoot = userConfigDir();
     if (configRoot == null) {
+      if (BROWSER_DEBUG) {
+        logger.warn("[BROWSER_DEBUG] user config dir is null; cannot patch i2pfirefox clients.config");
+      }
       return;
     }
     File pluginClients = new File(configRoot, "plugins/i2pfirefox/clients.config");
     if (!pluginClients.exists() || !pluginClients.isFile()) {
+      if (BROWSER_DEBUG) {
+        logger.info("[BROWSER_DEBUG] plugin clients.config not found at " + pluginClients.getAbsolutePath());
+      }
       return;
     }
     try {
       List<String> lines = Files.readAllLines(pluginClients.toPath(), StandardCharsets.UTF_8);
       boolean changed = false;
+      String before = null;
+      String after = null;
       for (int i = 0; i < lines.size(); i++) {
         String line = lines.get(i);
         if (line.startsWith("clientApp.0.startOnLoad=")) {
+          before = line;
           if (!"clientApp.0.startOnLoad=false".equals(line)) {
             lines.set(i, "clientApp.0.startOnLoad=false");
             changed = true;
           }
+          after = lines.get(i);
           break;
         }
+      }
+      if (BROWSER_DEBUG) {
+        logger.info("[BROWSER_DEBUG] i2pfirefox startOnLoad before=" + before + " after=" + after +
+            " file=" + pluginClients.getAbsolutePath());
       }
       if (changed) {
         Files.write(pluginClients.toPath(), lines, StandardCharsets.UTF_8);
         logger.info("disabled i2pfirefox tray autostart in " + pluginClients.getAbsolutePath());
+      } else if (BROWSER_DEBUG) {
+        logger.info("[BROWSER_DEBUG] i2pfirefox tray autostart already disabled");
       }
     } catch (IOException ioe) {
       logger.warn("unable to update i2pfirefox clients.config", ioe);
